@@ -31,8 +31,23 @@ export default function DeployPage() {
 
   // 等待zustand persist完成hydration
   useEffect(() => {
-    useAppStore.persist.rehydrate();
-    setIsHydrated(true);
+    // 只在客户端执行
+    if (typeof window === 'undefined') return;
+    
+    // 检查是否已经hydrated
+    const checkHydrated = () => {
+      try {
+        // 尝试访问persist状态
+        const state = useAppStore.getState();
+        setIsHydrated(true);
+      } catch {
+        // 如果出错，等待一下再试
+        setTimeout(checkHydrated, 100);
+      }
+    };
+    
+    // 立即检查一次
+    checkHydrated();
   }, []);
 
   useEffect(() => {
