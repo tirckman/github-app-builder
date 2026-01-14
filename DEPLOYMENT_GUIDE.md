@@ -73,7 +73,7 @@ git push -u origin main
 ```
 1. 点击 "New OAuth App"
 2. 填写信息：
-   - Application name: GitHub App Builder
+   - Application name: `App Builder` 或 `Quick App Builder`（⚠️ 不能以"GitHub"或"Gist"开头）
    - Homepage URL: https://your-project.vercel.app
    - Authorization callback URL: https://your-project.vercel.app/api/auth/github/callback
 3. 点击 "Register application"

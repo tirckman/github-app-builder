@@ -54,7 +54,13 @@ export async function GET(request: NextRequest) {
     const userData = await userResponse.json();
 
     // 创建响应，将token存储在cookie中
-    const response = NextResponse.redirect(new URL(state, request.url));
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    const redirectUrl = new URL(state, baseUrl);
+    
+    // 添加一个查询参数，标识这是OAuth回调
+    redirectUrl.searchParams.set('github_connected', 'true');
+    
+    const response = NextResponse.redirect(redirectUrl);
 
     // 设置cookie（生产环境应该使用httpOnly和secure）
     response.cookies.set('github_token', tokenData.access_token, {
@@ -62,6 +68,7 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7天
+      path: '/',
     });
 
     response.cookies.set('github_user', JSON.stringify({
@@ -71,6 +78,7 @@ export async function GET(request: NextRequest) {
     }), {
       maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
+      path: '/',
     });
 
     return response;

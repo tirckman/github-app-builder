@@ -26,6 +26,7 @@ export default function DeployPage() {
   });
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
+  const [hasCheckedGitHub, setHasCheckedGitHub] = useState(false);
 
   useEffect(() => {
     if (!selectedTemplate) {
@@ -33,27 +34,45 @@ export default function DeployPage() {
       return;
     }
 
+    // 检查URL参数，判断是否是OAuth回调
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOAuthCallback = urlParams.get('github_connected') === 'true';
+    
+    // 如果是OAuth回调，清理URL参数
+    if (isOAuthCallback) {
+      window.history.replaceState({}, '', '/deploy');
+    }
+
+    // 只检查一次GitHub登录状态，避免循环
+    if (hasCheckedGitHub && !isOAuthCallback) return;
+
     // 检查GitHub登录状态
     const checkGitHubStatus = () => {
-      if (isGitHubConnected()) {
-        const user = getGitHubUser();
-        if (user) {
-          setConfig(prev => ({
-            ...prev,
-            githubConnected: true,
-            githubUsername: user.login,
-            githubAvatar: user.avatar_url,
-          }));
-          // 如果已连接，自动进入下一步
-          if (deployStep === 1) {
-            setDeployStep(2);
+      // OAuth回调后需要更长的延迟，确保cookie已经设置
+      const delay = isOAuthCallback ? 500 : 100;
+      
+      setTimeout(() => {
+        if (isGitHubConnected()) {
+          const user = getGitHubUser();
+          if (user) {
+            setConfig(prev => ({
+              ...prev,
+              githubConnected: true,
+              githubUsername: user.login,
+              githubAvatar: user.avatar_url,
+            }));
+            // 如果已连接且还在第一步，自动进入下一步
+            if (deployStep === 1) {
+              setDeployStep(2);
+            }
           }
         }
-      }
+        setHasCheckedGitHub(true);
+      }, delay);
     };
 
     checkGitHubStatus();
-  }, [selectedTemplate, router, deployStep]);
+  }, [selectedTemplate, router, deployStep, hasCheckedGitHub]);
 
   // 监听进度变化，当达到100%时更新部署状态
   useEffect(() => {
