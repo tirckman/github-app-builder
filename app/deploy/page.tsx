@@ -88,6 +88,17 @@ export default function DeployPage() {
     // 检查URL参数，判断是否是OAuth回调
     const urlParams = new URLSearchParams(window.location.search);
     const isOAuthCallback = urlParams.get('github_connected') === 'true';
+    const vercelOAuth = urlParams.get('vercel_oauth');
+    
+    // 如果是Vercel OAuth回调（不需要），显示提示并清理URL
+    if (vercelOAuth === 'not_needed') {
+      const message = urlParams.get('message');
+      if (message) {
+        alert(message);
+      }
+      // 清理URL参数
+      window.history.replaceState({}, '', '/deploy');
+    }
     
     // 如果是OAuth回调，清理URL参数
     if (isOAuthCallback) {
@@ -234,8 +245,47 @@ export default function DeployPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // 如果是Vercel token未配置，提供手动部署选项
-        if (data.error?.includes('Vercel token not configured') || data.requiresManualDeploy) {
+        const errorMessage = data.error || '部署失败';
+        
+        // 如果是GitHub集成问题
+        if (errorMessage.includes('GitHub integration') || errorMessage.includes('integration')) {
+          const shouldInstall = confirm(
+            '需要安装GitHub集成才能自动部署。\n\n' +
+            '选项1：点击"确定"跳转到Vercel安装GitHub集成（推荐）\n' +
+            '选项2：点击"取消"使用手动部署\n\n' +
+            '安装完成后，重新尝试自动部署。'
+          );
+          
+          if (shouldInstall) {
+            // 提供手动安装指引
+            const manualSteps = 
+              'GitHub集成手动安装步骤：\n\n' +
+              '方法1（推荐）：\n' +
+              '1. 访问：https://vercel.com/new\n' +
+              '2. 点击"Import Git Repository"\n' +
+              '3. 如果没有GitHub选项，会提示安装\n' +
+              '4. 按照提示安装GitHub集成\n\n' +
+              '方法2：\n' +
+              '1. 访问：https://vercel.com/account\n' +
+              '2. 点击"Git"或"Integrations"\n' +
+              '3. 找到GitHub，点击"Connect"\n\n' +
+              '安装完成后，返回此页面重新尝试部署。';
+            
+            alert(manualSteps);
+            
+            // 尝试打开新建项目页面（通常会有安装提示）
+            window.open('https://vercel.com/new', '_blank');
+            return;
+          } else if (config.repoUrl) {
+            // 提供手动部署选项
+            window.open(`https://vercel.com/new?import=${encodeURIComponent(config.repoUrl)}`, '_blank');
+            alert('已打开Vercel导入页面。在Vercel中导入GitHub仓库后，你的应用就会自动部署！');
+            return;
+          }
+        }
+        
+        // 如果是Vercel token未配置
+        if (errorMessage.includes('Vercel token not configured') || data.requiresManualDeploy) {
           const shouldManualDeploy = confirm(
             'Vercel自动部署需要配置VERCEL_TOKEN环境变量。\n\n' +
             '选项1：配置VERCEL_TOKEN后重试（自动部署）\n' +
@@ -244,14 +294,13 @@ export default function DeployPage() {
           );
           
           if (shouldManualDeploy && config.repoUrl) {
-            // 跳转到Vercel导入项目页面
             window.open(`https://vercel.com/new?import=${encodeURIComponent(config.repoUrl)}`, '_blank');
-            // 显示成功提示
             alert('已打开Vercel导入页面。在Vercel中导入GitHub仓库后，你的应用就会自动部署！\n\n仓库地址：' + config.repoUrl);
             return;
           }
         }
-        throw new Error(data.error || '部署失败');
+        
+        throw new Error(errorMessage);
       }
 
       setDeploymentId(data.deploymentId);

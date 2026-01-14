@@ -70,7 +70,14 @@ export async function POST(request: NextRequest) {
 
       if (!createProjectResponse.ok) {
         const error = await createProjectResponse.json();
-        throw new Error(error.error?.message || 'Failed to create project. Make sure the GitHub repository is connected to Vercel.');
+        const errorMessage = error.error?.message || 'Failed to create project';
+        
+        // 检查是否是GitHub集成问题
+        if (errorMessage.includes('GitHub integration') || errorMessage.includes('integration')) {
+          throw new Error('GitHub integration required. Please install GitHub integration in Vercel first: https://vercel.com/integrations/github');
+        }
+        
+        throw new Error(errorMessage);
       }
     } else if (!projectResponse.ok) {
       const error = await projectResponse.json();

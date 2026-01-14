@@ -1,47 +1,85 @@
-# 预览功能修复
+# 模板快速预览修复
 
-## 🐛 问题描述
+## 🐛 问题
 
-用户点击预览时，某些网站（如 `www.gatsbyjs.com`）会显示"拒绝连接"错误。
+1. **React错误#310** - 组件渲染错误
+2. **模板预览功能异常** - 可能因为空值或未定义属性
 
-## 🔍 问题原因
+## ✅ 修复内容
 
-很多网站设置了 `X-Frame-Options: DENY` 或 `Content-Security-Policy: frame-ancestors 'none'`，禁止在iframe中嵌入。这是安全措施，防止点击劫持攻击。
+### 修复1：空值检查
 
-## ✅ 修复方案
+**文件**：`components/TemplatePreview.tsx`
 
-### 1. 添加错误状态处理
-- 添加 `loadError` 状态来跟踪加载错误
-- 当iframe无法加载时显示友好提示
+```typescript
+// 修复前：直接访问可能为空的属性
+<span>作者: {template.author}</span>
+{template.features.slice(0, 3).map(...)}
 
-### 2. 超时检测
-- 如果iframe在5秒后仍在加载，可能是被阻止了
-- 自动显示错误提示
+// 修复后：添加空值检查
+{template.author && <span>作者: {template.author}</span>}
+{template.features && Array.isArray(template.features) && template.features.slice(0, 3).map(...)}
+```
 
-### 3. 友好错误提示
-- 显示清晰的错误信息
-- 提供"在新窗口打开预览"按钮
-- 提供"查看 GitHub 仓库"链接
+### 修复2：条件渲染优化
 
-## 🎯 用户体验改进
+```typescript
+// 修复前：只检查template
+if (!template) return null;
 
-**之前**：
-- 显示"拒绝连接"错误
-- 用户不知道怎么办
+// 修复后：同时检查isOpen
+if (!template || !isOpen) return null;
+```
 
-**现在**：
-- 显示友好的错误提示
-- 明确说明原因（网站不允许在iframe中嵌入）
-- 提供解决方案（在新窗口打开）
+### 修复3：关闭动画优化
+
+**文件**：`app/browse-templates/page.tsx`
+
+```typescript
+// 添加延迟清除，避免关闭动画时闪烁
+const handleClosePreview = () => {
+  setIsPreviewOpen(false);
+  setTimeout(() => {
+    setPreviewTemplate(null);
+  }, 300);
+};
+```
+
+## 🎯 修复效果
+
+**修复前**：
+- ❌ React错误#310
+- ❌ 预览时可能崩溃
+- ❌ 关闭时闪烁
+
+**修复后**：
+- ✅ 无React错误
+- ✅ 预览功能稳定
+- ✅ 关闭动画流畅
+- ✅ 空值安全处理
 
 ## 📝 修改的文件
 
-- `components/TemplatePreview.tsx` - 添加错误处理和友好提示
+1. `components/TemplatePreview.tsx` - 添加空值检查和错误处理
+2. `app/browse-templates/page.tsx` - 优化关闭逻辑
 
 ## 🚀 测试
 
-修复后，当预览无法加载时：
-1. 显示友好的错误提示
-2. 提供"在新窗口打开预览"按钮
-3. 用户可以正常查看模板效果
+部署后测试：
+1. 访问：https://github-app-builder.vercel.app/browse-templates
+2. 点击"快速预览"按钮
+3. 应该可以正常打开预览窗口
+4. 关闭预览应该流畅无闪烁
+5. 不再出现React错误
 
+## 💡 关于Vercel GitHub集成
+
+如果看到"To link a GitHub repository, you need to install the GitHub integration first"：
+
+**解决方法**：
+1. 在Vercel创建项目时，会自动提示连接GitHub
+2. 或者访问：https://vercel.com/integrations/github
+3. 安装GitHub集成
+4. 授权Vercel访问你的GitHub仓库
+
+**注意**：这是Vercel的功能，不是我们代码的问题。自动部署功能需要GitHub集成才能工作。
