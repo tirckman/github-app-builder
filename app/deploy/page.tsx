@@ -29,10 +29,27 @@ export default function DeployPage() {
   const [hasCheckedGitHub, setHasCheckedGitHub] = useState(false);
 
   useEffect(() => {
-    if (!selectedTemplate) {
-      router.push('/customize');
-      return;
-    }
+    // 延迟检查，给状态恢复一些时间（比如从localStorage恢复）
+    const checkTemplate = setTimeout(() => {
+      // 检查是否有模板，如果没有则跳转到定制化页面
+      if (!selectedTemplate) {
+        // 先检查是否有定制化配置，如果有则跳转到定制化页面，否则跳转到模板选择
+        const { customization } = useAppStore.getState();
+        if (customization) {
+          router.push('/customize');
+        } else {
+          router.push('/browse-templates');
+        }
+        return;
+      }
+    }, 200); // 延迟200ms，给状态恢复时间
+
+    return () => clearTimeout(checkTemplate);
+  }, [selectedTemplate, router]);
+
+  // 单独的useEffect处理GitHub OAuth回调
+  useEffect(() => {
+    if (!selectedTemplate) return; // 如果没有模板，不处理OAuth
 
     // 检查URL参数，判断是否是OAuth回调
     const urlParams = new URLSearchParams(window.location.search);
@@ -49,30 +66,50 @@ export default function DeployPage() {
     // 检查GitHub登录状态
     const checkGitHubStatus = () => {
       // OAuth回调后需要更长的延迟，确保cookie已经设置
-      const delay = isOAuthCallback ? 500 : 100;
+      const delay = isOAuthCallback ? 1500 : 100;
       
       setTimeout(() => {
-        if (isGitHubConnected()) {
-          const user = getGitHubUser();
-          if (user) {
-            setConfig(prev => ({
-              ...prev,
-              githubConnected: true,
-              githubUsername: user.login,
-              githubAvatar: user.avatar_url,
-            }));
-            // 如果已连接且还在第一步，自动进入下一步
-            if (deployStep === 1) {
-              setDeployStep(2);
+        // 多次尝试读取cookie，因为可能还没完全设置好
+        let attempts = 0;
+        const maxAttempts = 5; // 增加尝试次数
+        
+        const tryReadCookie = () => {
+          attempts++;
+          if (isGitHubConnected()) {
+            const user = getGitHubUser();
+            if (user) {
+              console.log('GitHub connected:', user.login); // 调试日志
+              setConfig(prev => ({
+                ...prev,
+                githubConnected: true,
+                githubUsername: user.login,
+                githubAvatar: user.avatar_url,
+              }));
+              // 如果已连接且还在第一步，自动进入下一步
+              if (deployStep === 1) {
+                setDeployStep(2);
+              }
+              setHasCheckedGitHub(true);
+              return;
             }
           }
-        }
-        setHasCheckedGitHub(true);
+          
+          // 如果还没读取到，且还有尝试次数，继续尝试
+          if (attempts < maxAttempts && isOAuthCallback) {
+            console.log(`尝试读取GitHub状态 (${attempts}/${maxAttempts})`); // 调试日志
+            setTimeout(tryReadCookie, 400);
+          } else {
+            console.log('GitHub状态检查完成，未连接'); // 调试日志
+            setHasCheckedGitHub(true);
+          }
+        };
+        
+        tryReadCookie();
       }, delay);
     };
 
     checkGitHubStatus();
-  }, [selectedTemplate, router, deployStep, hasCheckedGitHub]);
+  }, [selectedTemplate, deployStep, hasCheckedGitHub]);
 
   // 监听进度变化，当达到100%时更新部署状态
   useEffect(() => {
@@ -238,8 +275,29 @@ export default function DeployPage() {
     router.push('/');
   };
 
+  // 如果还没有选择模板，显示加载状态并跳转
   if (!selectedTemplate) {
-    return null;
+    // 延迟跳转，避免闪烁
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        const { customization } = useAppStore.getState();
+        if (customization) {
+          router.push('/customize');
+        } else {
+          router.push('/browse-templates');
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }, [router]);
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">正在加载...</p>
+        </div>
+      </div>
+    );
   }
 
   const deployUrl = useAppStore.getState().deployUrl || config.deployUrl || `https://${config.repoName || 'your-app'}.vercel.app`;
