@@ -27,8 +27,18 @@ export default function DeployPage() {
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const [hasCheckedGitHub, setHasCheckedGitHub] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // 等待zustand persist完成hydration
+  useEffect(() => {
+    useAppStore.persist.rehydrate();
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
+    // 等待hydration完成
+    if (!isHydrated) return;
+
     // 延迟检查，给状态恢复一些时间（从localStorage恢复）
     const checkTemplate = setTimeout(() => {
       // 再次从store获取最新状态（可能已经从localStorage恢复）
@@ -48,11 +58,17 @@ export default function DeployPage() {
     }, 500); // 增加延迟到500ms，确保localStorage已恢复
 
     return () => clearTimeout(checkTemplate);
-  }, [selectedTemplate, router]);
+  }, [selectedTemplate, router, isHydrated]);
 
   // 单独的useEffect处理GitHub OAuth回调
   useEffect(() => {
+    // 等待hydration完成
+    if (!isHydrated) return;
+    
     if (!selectedTemplate) return; // 如果没有模板，不处理OAuth
+
+    // 只在客户端执行（检查window对象）
+    if (typeof window === 'undefined') return;
 
     // 检查URL参数，判断是否是OAuth回调
     const urlParams = new URLSearchParams(window.location.search);
@@ -112,7 +128,7 @@ export default function DeployPage() {
     };
 
     checkGitHubStatus();
-  }, [selectedTemplate, deployStep, hasCheckedGitHub]);
+  }, [selectedTemplate, deployStep, hasCheckedGitHub, isHydrated]);
 
   // 监听进度变化，当达到100%时更新部署状态
   useEffect(() => {

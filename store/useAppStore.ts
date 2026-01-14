@@ -46,6 +46,8 @@ export const useAppStore = create<AppStore>()(
         customization: state.customization,
         // deployUrl 和 deployStatus 不持久化
       }),
+      // 跳过hydration，避免SSR/CSR不匹配
+      skipHydration: true,
     }
   )
 );
