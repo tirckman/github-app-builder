@@ -18,6 +18,14 @@ export default function BrowseTemplatesPage() {
   const [previewTemplate, setPreviewTemplate] = useState<any | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    // 延迟清除模板，避免关闭动画时闪烁
+    setTimeout(() => {
+      setPreviewTemplate(null);
+    }, 300);
+  };
+
   useEffect(() => {
     if (selectedAppType) {
       const fetchedTemplates = getTemplatesByAppType(selectedAppType.id);
@@ -210,7 +218,7 @@ export default function BrowseTemplatesPage() {
       <TemplatePreview
         template={previewTemplate}
         isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
+        onClose={handleClosePreview}
       />
     </div>
   );

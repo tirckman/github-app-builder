@@ -17,13 +17,14 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && template) {
       setIsLoading(true);
       setLoadError(false);
     }
   }, [isOpen, template]);
 
-  if (!template) return null;
+  // 如果模板不存在或未打开，不渲染
+  if (!template || !isOpen) return null;
 
   const demoUrl = template.demoUrl || template.previewUrl;
 
@@ -205,14 +206,14 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
               <div className="flex items-center justify-between text-sm flex-wrap gap-2">
                 <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400 flex-wrap">
-                  <span>作者: {template.author}</span>
-                  <span>语言: {template.language}</span>
-                  <span>⭐ {template.stars.toLocaleString()}</span>
+                  {template.author && <span>作者: {template.author}</span>}
+                  {template.language && <span>语言: {template.language}</span>}
+                  {template.stars && <span>⭐ {template.stars.toLocaleString()}</span>}
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {template.features.slice(0, 3).map((feature) => (
+                  {template.features && Array.isArray(template.features) && template.features.slice(0, 3).map((feature: string, index: number) => (
                     <span
-                      key={feature}
+                      key={index}
                       className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded"
                     >
                       {feature}
