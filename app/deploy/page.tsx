@@ -171,14 +171,15 @@ export default function DeployPage() {
       return;
     }
 
-    const token = getGitHubToken();
-    if (!token) {
+    // 检查GitHub连接状态（使用github_user cookie，因为github_token是httpOnly）
+    if (!isGitHubConnected()) {
       alert('请先连接GitHub账号');
       return;
     }
 
     try {
       setIsDeploying(true);
+      // 不传递token，让API从httpOnly cookie中读取
       const response = await fetch('/api/github/create-repo', {
         method: 'POST',
         headers: {
@@ -186,7 +187,7 @@ export default function DeployPage() {
         },
         body: JSON.stringify({
           name: config.repoName,
-          token,
+          // token从httpOnly cookie中读取，不需要传递
         }),
       });
 

@@ -3,12 +3,22 @@ import { createGitHubRepo, getGitHubUser } from '@/lib/github';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, token } = await request.json();
+    const { name } = await request.json();
 
-    if (!name || !token) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'Repository name and token are required' },
+        { error: 'Repository name is required' },
         { status: 400 }
+      );
+    }
+
+    // 从httpOnly cookie中读取token
+    const token = request.cookies.get('github_token')?.value;
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'GitHub token not found. Please connect your GitHub account first.' },
+        { status: 401 }
       );
     }
 
