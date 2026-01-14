@@ -79,6 +79,8 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
       path: '/',
+      // 不设置httpOnly，让客户端可以读取（用于检查连接状态）
+      // github_token保持httpOnly（更安全）
     });
 
     return response;

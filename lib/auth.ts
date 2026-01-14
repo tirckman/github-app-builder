@@ -34,7 +34,9 @@ export function getGitHubUser(): GitHubUser | null {
 }
 
 export function isGitHubConnected(): boolean {
-  return getGitHubToken() !== null;
+  // 由于github_token设置了httpOnly，JavaScript无法读取
+  // 所以检查github_user cookie来判断是否已连接
+  return getGitHubUser() !== null;
 }
 
 export function logoutGitHub() {
