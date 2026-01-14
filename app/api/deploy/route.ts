@@ -6,7 +6,11 @@ const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID; // 可选，团队账号需�
 export async function POST(request: NextRequest) {
   if (!VERCEL_TOKEN) {
     return NextResponse.json(
-      { error: 'Vercel token not configured' },
+      { 
+        error: 'Vercel token not configured',
+        message: 'Vercel自动部署功能需要配置VERCEL_TOKEN环境变量。你可以：1) 在Vercel控制台配置token启用自动部署，或 2) 手动在Vercel导入GitHub仓库进行部署。',
+        requiresManualDeploy: true
+      },
       { status: 500 }
     );
   }

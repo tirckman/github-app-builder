@@ -234,6 +234,23 @@ export default function DeployPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        // 如果是Vercel token未配置，提供手动部署选项
+        if (data.error?.includes('Vercel token not configured') || data.requiresManualDeploy) {
+          const shouldManualDeploy = confirm(
+            'Vercel自动部署需要配置VERCEL_TOKEN环境变量。\n\n' +
+            '选项1：配置VERCEL_TOKEN后重试（自动部署）\n' +
+            '选项2：点击"确定"跳转到Vercel手动部署\n\n' +
+            '点击"确定"跳转到Vercel，或点击"取消"稍后配置token。'
+          );
+          
+          if (shouldManualDeploy && config.repoUrl) {
+            // 跳转到Vercel导入项目页面
+            window.open(`https://vercel.com/new?import=${encodeURIComponent(config.repoUrl)}`, '_blank');
+            // 显示成功提示
+            alert('已打开Vercel导入页面。在Vercel中导入GitHub仓库后，你的应用就会自动部署！\n\n仓库地址：' + config.repoUrl);
+            return;
+          }
+        }
         throw new Error(data.error || '部署失败');
       }
 
@@ -504,26 +521,58 @@ export default function DeployPage() {
               </h2>
             </div>
 
-            <div className="bg-white dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 text-center rounded-lg mb-6">
-              <button
-                onClick={handleConnectVercel}
-                disabled={isDeploying}
-                className="px-8 py-4 bg-black dark:bg-white text-white dark:text-gray-900 rounded-lg text-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-              >
-                {isDeploying ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    部署中...
-                  </>
-                ) : (
-                  '连接Vercel并部署'
-                )}
-              </button>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                {isDeploying 
-                  ? '正在创建部署，请稍候...' 
-                  : '点击后将自动部署到Vercel'}
-              </p>
+            <div className="space-y-4">
+              {/* 自动部署选项 */}
+              <div className="bg-white dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 text-center rounded-lg">
+                <button
+                  onClick={handleConnectVercel}
+                  disabled={isDeploying}
+                  className="px-8 py-4 bg-black dark:bg-white text-white dark:text-gray-900 rounded-lg text-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                >
+                  {isDeploying ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      部署中...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="w-5 h-5" />
+                      一键自动部署
+                    </>
+                  )}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                  {isDeploying 
+                    ? '正在创建部署，请稍候...' 
+                    : '自动部署到Vercel（需要配置VERCEL_TOKEN）'}
+                </p>
+              </div>
+
+              {/* 手动部署选项 */}
+              {config.repoUrl && (
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        或者手动部署
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        如果自动部署不可用，你可以手动在Vercel导入GitHub仓库：
+                      </p>
+                      <a
+                        href={`https://vercel.com/new?import=${encodeURIComponent(config.repoUrl)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:shadow-lg transition-all"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        在Vercel手动部署
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg text-sm space-y-2">
