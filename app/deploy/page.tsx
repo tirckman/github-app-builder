@@ -29,20 +29,23 @@ export default function DeployPage() {
   const [hasCheckedGitHub, setHasCheckedGitHub] = useState(false);
 
   useEffect(() => {
-    // 延迟检查，给状态恢复一些时间（比如从localStorage恢复）
+    // 延迟检查，给状态恢复一些时间（从localStorage恢复）
     const checkTemplate = setTimeout(() => {
+      // 再次从store获取最新状态（可能已经从localStorage恢复）
+      const currentState = useAppStore.getState();
+      const currentTemplate = currentState.selectedTemplate;
+      
       // 检查是否有模板，如果没有则跳转到定制化页面
-      if (!selectedTemplate) {
+      if (!currentTemplate) {
         // 先检查是否有定制化配置，如果有则跳转到定制化页面，否则跳转到模板选择
-        const { customization } = useAppStore.getState();
-        if (customization) {
+        if (currentState.customization) {
           router.push('/customize');
         } else {
           router.push('/browse-templates');
         }
         return;
       }
-    }, 200); // 延迟200ms，给状态恢复时间
+    }, 500); // 增加延迟到500ms，确保localStorage已恢复
 
     return () => clearTimeout(checkTemplate);
   }, [selectedTemplate, router]);
