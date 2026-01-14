@@ -26,7 +26,7 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
   // 如果模板不存在或未打开，不渲染
   if (!template || !isOpen) return null;
 
-  const demoUrl = template.demoUrl || template.previewUrl;
+  const demoUrl = template?.demoUrl || template?.previewUrl;
 
   const handleLoad = () => {
     setIsLoading(false);
@@ -58,30 +58,35 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
     setIsFullscreen(!isFullscreen);
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* 遮罩层 */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-          />
+  // 如果模板不存在或未打开，不渲染
+  if (!template || !isOpen) {
+    return null;
+  }
 
-          {/* 预览窗口 */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className={`fixed z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
-              isFullscreen 
-                ? 'inset-0 rounded-none' 
-                : 'inset-4 md:inset-8 lg:inset-16'
-            }`}
-          >
+  return (
+    <AnimatePresence mode="wait">
+      {/* 遮罩层 */}
+      <motion.div
+        key="overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+      />
+
+      {/* 预览窗口 */}
+      <motion.div
+        key="preview-modal"
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className={`fixed z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+          isFullscreen 
+            ? 'inset-0 rounded-none' 
+            : 'inset-4 md:inset-8 lg:inset-16'
+        }`}
+      >
             {/* 头部 */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
@@ -222,9 +227,7 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
                 </div>
               </div>
             </div>
-          </motion.div>
-        </>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 }
