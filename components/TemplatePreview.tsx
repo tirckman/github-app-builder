@@ -14,10 +14,12 @@ interface TemplatePreviewProps {
 export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
+      setLoadError(false);
     }
   }, [isOpen, template]);
 
@@ -27,7 +29,29 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
 
   const handleLoad = () => {
     setIsLoading(false);
+    setLoadError(false);
   };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setLoadError(true);
+  };
+
+  // 检测iframe是否被阻止加载（X-Frame-Options）
+  useEffect(() => {
+    if (!isOpen || !demoUrl) return;
+
+    // 设置超时检测，如果5秒后还在加载，可能是被阻止了
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        // 超时后仍然在加载，可能是被X-Frame-Options阻止
+        setLoadError(true);
+        setIsLoading(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [isOpen, demoUrl, isLoading]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -99,7 +123,7 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
 
             {/* 预览内容 */}
             <div className="flex-1 overflow-hidden relative bg-gray-100 dark:bg-gray-900">
-              {isLoading && (
+              {isLoading && !loadError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 z-10">
                   <div className="text-center">
                     <Loader2 className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin mx-auto mb-2" />
@@ -108,13 +132,51 @@ export function TemplatePreview({ template, isOpen, onClose }: TemplatePreviewPr
                 </div>
               )}
               
-              {demoUrl ? (
+              {loadError ? (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+                  <div className="text-center p-8 max-w-md">
+                    <div className="text-6xl mb-4">🚫</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      无法在预览窗口中加载
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                      该网站不允许在iframe中嵌入。请点击下方按钮在新窗口中打开查看。
+                    </p>
+                    <div className="flex flex-col gap-3 items-center">
+                      {demoUrl && (
+                        <a
+                          href={demoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                          在新窗口打开预览
+                        </a>
+                      )}
+                      {template.githubUrl && (
+                        <a
+                          href={template.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                          查看 GitHub 仓库
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : demoUrl ? (
                 <iframe
                   src={demoUrl}
                   className="w-full h-full border-0"
                   title={`${template.name} 预览`}
                   onLoad={handleLoad}
-                  style={{ display: isLoading ? 'none' : 'block' }}
+                  onError={handleError}
+                  style={{ display: isLoading || loadError ? 'none' : 'block' }}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
