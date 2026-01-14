@@ -35,8 +35,49 @@ export async function POST(request: NextRequest) {
     }
 
     const [_, owner, repo] = match;
+    const repoFullName = `${owner}/${repo}`;
 
-    // 调用Vercel API创建部署
+    // 首先创建或获取项目（Vercel需要先有项目才能部署）
+    let projectId = repoName;
+    
+    // 检查项目是否存在
+    const projectCheckUrl = `https://api.vercel.com/v9/projects/${projectId}${VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : ''}`;
+    const projectResponse = await fetch(projectCheckUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${VERCEL_TOKEN}`,
+      },
+    });
+
+    // 如果项目不存在，创建项目
+    if (projectResponse.status === 404) {
+      const createProjectResponse = await fetch('https://api.vercel.com/v9/projects', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${VERCEL_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: repoName,
+          gitRepository: {
+            type: 'github',
+            repo: repoFullName,
+          },
+          framework: 'nextjs',
+          ...(VERCEL_TEAM_ID && { teamId: VERCEL_TEAM_ID }),
+        }),
+      });
+
+      if (!createProjectResponse.ok) {
+        const error = await createProjectResponse.json();
+        throw new Error(error.error?.message || 'Failed to create project. Make sure the GitHub repository is connected to Vercel.');
+      }
+    } else if (!projectResponse.ok) {
+      const error = await projectResponse.json();
+      throw new Error(error.error?.message || 'Failed to check project');
+    }
+
+    // 创建部署（使用项目名称）
     const deployResponse = await fetch('https://api.vercel.com/v13/deployments', {
       method: 'POST',
       headers: {
@@ -45,13 +86,11 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         name: repoName,
+        project: projectId,
         gitSource: {
           type: 'github',
-          repo: `${owner}/${repo}`,
+          repo: repoFullName,
           ref: 'main',
-        },
-        projectSettings: {
-          framework: 'nextjs',
         },
         ...(VERCEL_TEAM_ID && { teamId: VERCEL_TEAM_ID }),
       }),
